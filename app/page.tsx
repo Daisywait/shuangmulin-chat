@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { ChatWorkspace } from "@/components/chat-workspace";
-import { isAuthenticated } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function Home() {
-  if (!(await isAuthenticated())) {
+  const user = await getCurrentUser();
+  if (!user) {
     redirect("/login");
   }
 
-  return <ChatWorkspace adminEmail={process.env.ADMIN_EMAIL ?? "admin"} />;
+  return <ChatWorkspace adminEmail={user.email} />;
 }

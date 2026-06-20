@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
     const body = (await request.json()) as {
       conversationId?: string;
       model: string;
@@ -23,6 +23,17 @@ export async function POST(request: Request) {
     }
 
     const model = getModelById(body.model);
+    const supabase = getSupabaseAdmin();
+    const { data: conversation, error: conversationError } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("id", body.conversationId)
+      .eq("user_id", user.id)
+      .single();
+    if (conversationError || !conversation) {
+      return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+    }
+
     const providerResponse = await streamProvider({
       model,
       messages: body.messages,
@@ -30,7 +41,6 @@ export async function POST(request: Request) {
     });
     const normalized = await normalizeProviderStream(providerResponse, model.provider);
     const [clientStream, persistStream] = normalized.tee();
-    const supabase = getSupabaseAdmin();
 
     void persistAssistantMessage({
       supabase,
